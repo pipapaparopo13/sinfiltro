@@ -12,7 +12,8 @@ type SoundType =
     | "winner"
     | "podium"
     | "countdown"
-    | "whoosh";
+    | "whoosh"
+    | "fail";
 
 type MusicType = "lobby" | "gameplay" | "voting" | "results";
 
@@ -209,6 +210,33 @@ export function useGameAudio() {
                 osc.connect(soundGain);
                 osc.start(now);
                 osc.stop(now + 0.4);
+                break;
+            }
+            case "fail": {
+                // Sad trombone / fail sound
+                const osc = ctx.createOscillator();
+                osc.type = "sawtooth";
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(80, now + 0.5);
+
+                // Add some vibrato for comedic effect
+                const lfo = ctx.createOscillator();
+                lfo.frequency.value = 5;
+                const lfoGain = ctx.createGain();
+                lfoGain.gain.value = 10;
+                lfo.connect(lfoGain);
+                lfoGain.connect(osc.frequency);
+                lfo.start(now);
+                lfo.stop(now + 0.5);
+
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.5);
+
+                osc.connect(gain);
+                gain.connect(gainNodeRef.current!);
+                osc.start(now);
+                osc.stop(now + 0.5);
                 break;
             }
         }

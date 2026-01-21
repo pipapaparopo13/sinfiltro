@@ -204,6 +204,8 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         }
     }, [showResults, playSound]);
 
+    const [penalizedPlayers, setPenalizedPlayers] = useState<string[]>([]);
+
     // Timer countdown
     useEffect(() => {
         if (gameState.status === "INPUT" || gameState.status === "VOTING") {
@@ -220,6 +222,8 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                         // Auto-advance when timer ends
                         if (gameState.status === "INPUT") {
                             handleInputTimeUp();
+                        } else if (gameState.status === "VOTING" && !showResults) {
+                            handleVotingTimeUp();
                         }
                         return 0;
                     }
@@ -230,6 +234,57 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             return () => clearInterval(interval);
         }
     }, [gameState.status, gameState.currentMatchIndex]);
+
+    const handleVotingTimeUp = useCallback(async () => {
+        if (!roomId || !matches[gameState.currentMatchIndex]) return;
+
+        const currentMatch = matches[gameState.currentMatchIndex];
+        const playerList = Object.values(players);
+
+        // Identify eligible voters (everyone except the two competing players)
+        const eligibleVoters = playerList.filter(
+            p => p.id !== currentMatch.playerA && p.id !== currentMatch.playerB && !p.isSpectator
+        );
+
+        // Identify who actually voted
+        const votedIds = new Set([
+            ...(currentMatch.votesA || []),
+            ...(currentMatch.votesB || [])
+        ]);
+
+        // Find sluggards (lazy players who didn't vote)
+        const sluggards = eligibleVoters.filter(p => !votedIds.has(p.id));
+
+        if (sluggards.length > 0) {
+            console.log("🐌 Lazy voters detected:", sluggards.map(p => p.name));
+
+            // Prepare updates for Firebase
+            const updates: Record<string, number> = {};
+            const penalizedIds: string[] = [];
+
+            sluggards.forEach(p => {
+                // Deduct 20 points
+                updates[`players/${p.id}/score`] = (p.score || 0) - 20;
+                penalizedIds.push(p.id);
+            });
+
+            // Apply penalties
+            await update(dbRef(`rooms/${roomId}`), updates);
+
+            // Trigger animation locally
+            setPenalizedPlayers(penalizedIds);
+            playSound("fail"); // Make sure this sound exists or use another one
+
+            // Clear animation after 3 seconds
+            setTimeout(() => {
+                setPenalizedPlayers([]);
+            }, 3000);
+        }
+
+        // Proceed to reveal results
+        revealResults();
+
+    }, [roomId, matches, gameState.currentMatchIndex, players, playSound]);
 
     const handleInputTimeUp = useCallback(async () => {
         if (!roomId) return;
@@ -1096,8 +1151,22 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                 .map((player, idx) => (
                                     <div
                                         key={player.id}
-                                        className={`flex flex-col items-center p-2 rounded-xl transition-transform hover:scale-110 ${idx === 0 ? 'bg-yellow-400/30 border-2 border-yellow-500 ring-4 ring-yellow-400/20' : ''}`}
+                                        className={`relative flex flex-col items-center p-2 rounded-xl transition-transform hover:scale-110 ${idx === 0 ? 'bg-yellow-400/30 border-2 border-yellow-500 ring-4 ring-yellow-400/20' : ''}`}
                                     >
+                                        <AnimatePresence>
+                                            {penalizedPlayers.includes(player.id) && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, scale: 0.5, y: 0 }}
+                                                    animate={{ opacity: 1, scale: 1.5, y: -50 }}
+                                                    exit={{ opacity: 0 }}
+                                                    className="absolute top-0 left-0 right-0 z-50 flex justify-center pointer-events-none"
+                                                >
+                                                    <span className="text-4xl font-black text-red-600 drop-shadow-[2px_2px_0_white] shake-animation">
+                                                        -20
+                                                    </span>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                         <span className="text-2xl mb-1">
                                             {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}
                                         </span>
