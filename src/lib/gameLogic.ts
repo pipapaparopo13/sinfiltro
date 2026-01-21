@@ -47,10 +47,11 @@ export interface Room {
     players: { [playerId: string]: Player };
     matches: Match[];
     prompts: string[];
+    lastActive?: number;
 }
 
 // Palabras para generar room IDs memorables (todas de 4 letras)
-const ROOM_WORDS = [
+export const ROOM_WORDS = [
     'BOLA', 'TACO', 'GATO', 'PATO', 'LUNA', 'MAGO', 'RAYO', 'PUMA',
     'NUBE', 'FLOR', 'ROCA', 'SOPA', 'MESA', 'VINO', 'CAFE', 'POLO',
     'RATA', 'COCO', 'FOCA', 'LEON', 'PERA', 'KIWI', 'LOBO', 'MONO',

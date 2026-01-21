@@ -63,6 +63,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                     set(roomRef, {
                         id: roomCode,
                         createdAt: Date.now(),
+                        lastActive: Date.now(),
                         hostId: "",
                         gameState: createInitialGameState(),
                         players: {},
@@ -71,6 +72,9 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                     });
                 } else {
                     const roomData = snapshot.val();
+                    // Update heartbeat on connect
+                    update(roomRef, { lastActive: Date.now() });
+
                     const playerCount = roomData.players ? Object.keys(roomData.players).length : 0;
                     console.log("📺 TV: Room already exists with", playerCount, "players:", roomData.players);
                 }
@@ -378,6 +382,25 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
 
         return () => clearTimeout(autoAdvanceTimer);
     }, [showResults, gameState.status, gameState.currentMatchIndex]);
+
+    // Heartbeat: Update lastActive every 2 minutes to prevent room recycling while active
+    useEffect(() => {
+        if (!roomId) return;
+
+        const updateHeartbeat = () => {
+            if (document.visibilityState === 'visible') {
+                update(dbRef(`rooms/${roomId}`), {
+                    lastActive: Date.now()
+                }).catch(e => console.error("Heartbeat error", e));
+            }
+        };
+
+        // Update on mount
+        updateHeartbeat();
+
+        const interval = setInterval(updateHeartbeat, 2 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [roomId]);
 
     // Avanzar al siguiente match
     const advanceToNextMatch = async () => {

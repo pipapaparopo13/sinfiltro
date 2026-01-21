@@ -1,6 +1,6 @@
 {
+  "/biblioteca/page": "app/biblioteca/page.js",
   "/page": "app/page.js",
   "/join/page": "app/join/page.js",
-  "/tv/[roomCode]/page": "app/tv/[roomCode]/page.js",
-  "/biblioteca/page": "app/biblioteca/page.js"
+  "/tv/[roomCode]/page": "app/tv/[roomCode]/page.js"
 }
