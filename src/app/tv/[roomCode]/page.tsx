@@ -642,34 +642,16 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                 </div>
             </header>
 
-            {/* Game Host Presenter - Top Left Fixed */}
-            <GameHost
-                phase={gameState.status as "LOBBY" | "INPUT" | "VOTING" | "RESULTS" | "PODIUM"}
-                playerCount={playerList.filter(p => !p.isSpectator).length}
-                playerNames={playerList.filter(p => !p.isSpectator).map(p => p.name)}
-                winnerName={
-                    showResults && currentMatch
-                        ? (() => {
-                            const match = currentMatch;
-                            const allVotesA = match?.votesA || [];
-                            const allVotesB = match?.votesB || [];
-                            const regA = allVotesA.filter(id => !players[id]?.isSpectator).length;
-                            const regB = allVotesB.filter(id => !players[id]?.isSpectator).length;
-                            const specA = allVotesA.filter(id => players[id]?.isSpectator).length;
-                            const specB = allVotesB.filter(id => players[id]?.isSpectator).length;
-
-                            if (regA > regB) return players[match.playerA]?.name;
-                            if (regB > regA) return players[match.playerB]?.name;
-                            if (specA > specB) return players[match.playerA]?.name;
-                            if (specB > specA) return players[match.playerB]?.name;
-                            return undefined;
-                        })()
-                        : gameState.status === "PODIUM"
-                            ? playerList.filter(p => !p.isSpectator).sort((a, b) => b.score - a.score)[0]?.name
-                            : undefined
-                }
-                showResults={showResults}
-            />
+            {/* Game Host Presenter - Top Left Fixed - Only in LOBBY */}
+            {gameState.status === "LOBBY" && (
+                <GameHost
+                    phase={gameState.status as "LOBBY" | "INPUT" | "VOTING" | "RESULTS" | "PODIUM"}
+                    playerCount={playerList.filter(p => !p.isSpectator).length}
+                    playerNames={playerList.filter(p => !p.isSpectator).map(p => p.name)}
+                    winnerName={undefined}
+                    showResults={showResults}
+                />
+            )}
 
 
             {/* Contenido principal según estado */}
