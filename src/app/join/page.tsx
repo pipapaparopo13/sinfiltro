@@ -44,7 +44,6 @@ function JoinContent() {
     const [responses, setResponses] = useState<{ [key: number]: string }>({});
     const [hasVoted, setHasVoted] = useState(false);
     const [myScore, setMyScore] = useState(0);
-    const [myScore, setMyScore] = useState(0);
     const [chatMessage, setChatMessage] = useState("");
     const [now, setNow] = useState(Date.now());
 
