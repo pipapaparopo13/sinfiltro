@@ -26,6 +26,7 @@ interface ChatMessage {
     timestamp: number;
     x: number; // Random position
     y: number;
+    rotation?: number;
 }
 
 export default function TVPage({ params }: { params: { roomCode: string } }) {
@@ -145,6 +146,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                     timestamp: msg.timestamp,
                     x: Math.random() * 30 + 55, // 55-85% from left (right side only)
                     y: Math.random() * 40 + 30, // 30-70% from top (middle area)
+                    rotation: Math.random() * 10 - 5,
                 }));
                 // Keep only last 10 messages
                 setChatMessages(messageList.slice(-10));
@@ -684,16 +686,33 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                         >
                             {/* Floating chat messages - positioned in safe zones */}
                             {chatMessages.map((msg) => (
-                                <div
+                                <motion.div
                                     key={msg.id}
-                                    className="floating-chat-message"
+                                    initial={{ scale: 0, opacity: 0, y: 10 }}
+                                    animate={{
+                                        opacity: [0, 1, 1, 0],
+                                        scale: [0, 1, 1, 0.8],
+                                        y: [10, 0, 0, -30]
+                                    }}
+                                    transition={{
+                                        duration: 8,
+                                        times: [0, 0.05, 0.9, 1],
+                                        ease: "easeInOut"
+                                    }}
+                                    className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 max-w-[200px]"
                                     style={{
                                         left: `${msg.x}%`,
                                         top: `${msg.y}%`,
                                     }}
                                 >
-                                    {msg.text}
-                                </div>
+                                    <div className="relative bg-white text-black px-4 py-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg leading-tight break-words"
+                                        style={{ transform: `rotate(${msg.rotation || -2}deg)` }}
+                                    >
+                                        "{msg.text}"
+                                        {/* Little tail for speech bubble */}
+                                        <div className="absolute -bottom-3 left-4 w-4 h-4 bg-white border-r-4 border-b-4 border-black transform rotate-45"></div>
+                                    </div>
+                                </motion.div>
                             ))}
 
                             {/* Center Logo */}
