@@ -207,33 +207,42 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
     const [penalizedPlayers, setPenalizedPlayers] = useState<string[]>([]);
 
     // Timer countdown
+    // Timer countdown
     useEffect(() => {
         if (gameState.status === "INPUT" || gameState.status === "VOTING") {
-            const targetTime = gameState.status === "INPUT"
-                ? gameState.inputTimeLimit
-                : gameState.voteTimeLimit;
+            const calculateRemaining = () => {
+                if (gameState.phaseEndTime) {
+                    const remaining = Math.max(0, Math.ceil((gameState.phaseEndTime - Date.now()) / 1000));
+                    return remaining;
+                } else {
+                    // Fallback to legacy local timer behavior if no timestamp
+                    return gameState.status === "INPUT" ? gameState.inputTimeLimit : gameState.voteTimeLimit;
+                }
+            };
 
-            setTimer(targetTime);
+            // Set initial value immediately
+            setTimer(calculateRemaining());
 
             const interval = setInterval(() => {
-                setTimer((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(interval);
-                        // Auto-advance when timer ends
-                        if (gameState.status === "INPUT") {
-                            handleInputTimeUp();
-                        } else if (gameState.status === "VOTING" && !showResults) {
-                            handleVotingTimeUp();
-                        }
-                        return 0;
+                const remaining = calculateRemaining();
+                setTimer(remaining);
+
+                if (remaining <= 0) {
+                    clearInterval(interval);
+
+                    // Only trigger end-of-phase logic if we are the "host" TV instance 
+                    // (prevent multiple triggers if logic was elsewhere, but here logic is in TV so it's fine)
+                    if (gameState.status === "INPUT") {
+                        handleInputTimeUp();
+                    } else if (gameState.status === "VOTING" && !showResults) {
+                        handleVotingTimeUp();
                     }
-                    return prev - 1;
-                });
+                }
             }, 1000);
 
             return () => clearInterval(interval);
         }
-    }, [gameState.status, gameState.currentMatchIndex]);
+    }, [gameState.status, gameState.currentMatchIndex, gameState.phaseEndTime]);
 
     const handleVotingTimeUp = useCallback(async () => {
         if (!roomId || !matches[gameState.currentMatchIndex]) return;
@@ -295,6 +304,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         await update(dbRef(`rooms/${roomId}/gameState`), {
             status: "VOTING",
             currentMatchIndex: 0,
+            phaseEndTime: Date.now() + 22000, // 20s + 2s buffer for auto-submits
         });
 
         // Wait 2 seconds for mobile clients to auto-submit their responses
@@ -491,6 +501,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                         status: "INPUT",
                         currentRound: gameState.currentRound + 1,
                         currentMatchIndex: 0,
+                        phaseEndTime: Date.now() + 90000,
                     },
                     ...playerUpdates,
                 });
@@ -500,6 +511,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             await update(dbRef(`rooms/${roomId}/gameState`), {
                 currentMatchIndex: nextIndex,
                 status: "VOTING",
+                phaseEndTime: Date.now() + 20000,
             });
         }
         setShowResults(false);

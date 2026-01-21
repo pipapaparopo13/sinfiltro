@@ -44,7 +44,15 @@ function JoinContent() {
     const [responses, setResponses] = useState<{ [key: number]: string }>({});
     const [hasVoted, setHasVoted] = useState(false);
     const [myScore, setMyScore] = useState(0);
+    const [myScore, setMyScore] = useState(0);
     const [chatMessage, setChatMessage] = useState("");
+    const [now, setNow] = useState(Date.now());
+
+    // Update 'now' every second for timers
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Avatar selection state - now just selecting a character
     const [selectedCharacter, setSelectedCharacter] = useState(AVATAR_CHARACTERS[0]);
@@ -471,7 +479,8 @@ function JoinContent() {
                 timer: 90,
                 currentMatchIndex: 0,
                 inputTimeLimit: 90,
-                voteTimeLimit: 15,
+                voteTimeLimit: 20,
+                phaseEndTime: Date.now() + 90000,
             },
         });
     };
@@ -1055,6 +1064,11 @@ function JoinContent() {
                         exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center"
                     >
+                        {/* Mobile Timer */}
+                        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-1 rounded-full font-bold z-10 border border-white/20 shadow-lg">
+                            ⏱️ {Math.max(0, Math.ceil(((gameState.phaseEndTime || (now + 20000)) - now) / 1000))}s
+                        </div>
+
                         {isMyTurn ? (
                             <div className="text-center">
                                 <div className="text-6xl mb-4">🙈</div>

@@ -37,6 +37,7 @@ export interface GameState {
     currentMatchIndex: number;
     inputTimeLimit: number;
     voteTimeLimit: number;
+    phaseEndTime?: number;
 }
 
 export interface Room {
@@ -157,7 +158,7 @@ export function createInitialGameState(): GameState {
         timer: 0,
         currentMatchIndex: 0,
         inputTimeLimit: 90,
-        voteTimeLimit: 15
+        voteTimeLimit: 20
     };
 }
 
