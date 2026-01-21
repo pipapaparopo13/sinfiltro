@@ -846,84 +846,87 @@ function JoinContent() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="flex-1 flex flex-col items-center justify-start overflow-y-auto py-4"
+                        className="flex-1 flex flex-col items-center justify-start py-4 relative"
                     >
-                        {isHost ? (
-                            <div className="text-center w-full max-w-md px-2">
-                                <h2 className="text-xl font-bold mb-2">
-                                    👑 Eres el anfitrión
-                                </h2>
-                                <p className="text-gray-400 mb-4 text-sm">
-                                    {Object.keys(players).filter(id => !players[id]?.isSpectator).length} jugadores conectados
-                                </p>
+                        <div className="flex-1 w-full overflow-y-auto flex flex-col items-center w-full px-2">
+                            {isHost ? (
+                                <div className="text-center w-full max-w-md px-2">
+                                    <h2 className="text-xl font-bold mb-2">
+                                        👑 Eres el anfitrión
+                                    </h2>
+                                    <p className="text-gray-400 mb-4 text-sm">
+                                        {Object.keys(players).filter(id => !players[id]?.isSpectator).length} jugadores conectados
+                                    </p>
 
-                                {/* Custom Library Section */}
-                                <div className="glass-card p-3 mb-4">
-                                    <p className="text-sm font-bold text-black mb-2">📚 Usar biblioteca personalizada</p>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={libraryCode}
-                                            onChange={(e) => setLibraryCode(e.target.value.toUpperCase())}
-                                            placeholder="Código (ej: ABC123)"
-                                            maxLength={6}
-                                            className="flex-1 px-3 py-2 rounded-lg border-2 border-black/20 bg-white/70 text-black font-mono text-center uppercase"
-                                        />
-                                        <button
-                                            onClick={handleLoadLibrary}
-                                            disabled={libraryLoading || !libraryCode.trim()}
-                                            className="bg-purple-500 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
-                                        >
-                                            {libraryLoading ? '⏳' : '🔍'}
-                                        </button>
-                                    </div>
-                                    {loadedLibrary && (
-                                        <div className="mt-3 bg-green-100 text-green-800 p-2 rounded-lg text-sm">
-                                            ✅ <strong>{loadedLibrary.name}</strong> ({loadedLibrary.prompts.length} preguntas)
+                                    {/* Custom Library Section */}
+                                    <div className="glass-card p-3 mb-4">
+                                        <p className="text-sm font-bold text-black mb-2">📚 Usar biblioteca personalizada</p>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={libraryCode}
+                                                onChange={(e) => setLibraryCode(e.target.value.toUpperCase())}
+                                                placeholder="Código (ej: ABC123)"
+                                                maxLength={6}
+                                                className="flex-1 px-3 py-2 rounded-lg border-2 border-black/20 bg-white/70 text-black font-mono text-center uppercase"
+                                            />
                                             <button
-                                                onClick={() => { setLoadedLibrary(null); setLibraryCode(''); }}
-                                                className="ml-2 text-red-500 hover:text-red-700"
+                                                onClick={handleLoadLibrary}
+                                                disabled={libraryLoading || !libraryCode.trim()}
+                                                className="bg-purple-500 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-50"
                                             >
-                                                ✕
+                                                {libraryLoading ? '⏳' : '🔍'}
                                             </button>
                                         </div>
-                                    )}
-                                    {!loadedLibrary && (
-                                        <p className="text-xs text-black/50 mt-2">
-                                            Deja vacío para usar las preguntas por defecto
+                                        {loadedLibrary && (
+                                            <div className="mt-3 bg-green-100 text-green-800 p-2 rounded-lg text-sm">
+                                                ✅ <strong>{loadedLibrary.name}</strong> ({loadedLibrary.prompts.length} preguntas)
+                                                <button
+                                                    onClick={() => { setLoadedLibrary(null); setLibraryCode(''); }}
+                                                    className="ml-2 text-red-500 hover:text-red-700"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        )}
+                                        {!loadedLibrary && (
+                                            <p className="text-xs text-black/50 mt-2">
+                                                Deja vacío para usar las preguntas por defecto
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {Object.keys(players).filter(id => !players[id]?.isSpectator).length >= 3 ? (
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={handleStartGame}
+                                            className="glow-button text-lg py-4 px-10"
+                                        >
+                                            ¡EMPEZAR! 🚀
+                                        </motion.button>
+                                    ) : (
+                                        <p className="text-gray-500">
+                                            Esperando más jugadores (mín. 3)
                                         </p>
                                     )}
+                                    {error && <p className="text-red-400 mt-4">{error}</p>}
                                 </div>
-
-                                {Object.keys(players).filter(id => !players[id]?.isSpectator).length >= 3 ? (
-                                    <motion.button
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={handleStartGame}
-                                        className="glow-button text-lg py-4 px-10"
-                                    >
-                                        ¡EMPEZAR! 🚀
-                                    </motion.button>
-                                ) : (
-                                    <p className="text-gray-500">
-                                        Esperando más jugadores (mín. 3)
+                            ) : (
+                                <div className="text-center">
+                                    <div className="text-6xl mb-6">⏳</div>
+                                    <h2 className="text-xl font-bold">
+                                        Esperando al anfitrión...
+                                    </h2>
+                                    <p className="text-gray-400 mt-2">
+                                        {Object.keys(players).length} jugadores conectados
                                     </p>
-                                )}
-                                {error && <p className="text-red-400 mt-4">{error}</p>}
-                            </div>
-                        ) : (
-                            <div className="text-center">
-                                <div className="text-6xl mb-6">⏳</div>
-                                <h2 className="text-xl font-bold">
-                                    Esperando al anfitrión...
-                                </h2>
-                                <p className="text-gray-400 mt-2">
-                                    {Object.keys(players).length} jugadores conectados
-                                </p>
-                            </div>
-                        )}
+                                </div>
+                            )}
 
-                        {/* Chat input - visible to all players */}
-                        <div className="mt-4 w-full max-w-sm pb-4 px-2">
+                        </div>
+
+                        {/* Chat input - fixed at bottom for LOBBY */}
+                        <div className="w-full max-w-sm pb-4 px-2 z-20">
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -1155,43 +1158,45 @@ function JoinContent() {
             </AnimatePresence>
 
             {/* LEAVE BUTTON & CONFIRMATION */}
-            {isJoined && (
-                <div className="fixed bottom-2 left-0 right-0 px-4 z-[100] flex justify-center">
-                    {showLeaveConfirmation ? (
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className="bg-white p-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center gap-2 max-w-[280px] w-full"
-                        >
-                            <span className="text-black font-bold text-sm">¿Seguro que quieres abandonar?</span>
-                            <div className="flex gap-2 w-full">
-                                <button
-                                    onClick={() => {
-                                        handleLeaveRoom();
-                                        setShowLeaveConfirmation(false);
-                                    }}
-                                    className="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold text-xs border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-                                >
-                                    Sí, salir
-                                </button>
-                                <button
-                                    onClick={() => setShowLeaveConfirmation(false)}
-                                    className="flex-1 bg-gray-200 text-black py-2 rounded-xl font-bold text-xs border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-                                >
-                                    No
-                                </button>
-                            </div>
-                        </motion.div>
-                    ) : (
-                        <button
-                            onClick={() => setShowLeaveConfirmation(true)}
-                            className="bg-white/80 hover:bg-white text-black/60 font-bold text-[10px] uppercase tracking-wider py-1.5 px-4 rounded-full border-2 border-black/20 hover:border-black/40 shadow-sm transition-all active:scale-95"
-                        >
-                            🚪 Abandonar partida
-                        </button>
-                    )}
-                </div>
-            )}
+            {
+                isJoined && (
+                    <div className="fixed bottom-2 left-0 right-0 px-4 z-[100] flex justify-center">
+                        {showLeaveConfirmation ? (
+                            <motion.div
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                className="bg-white p-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center gap-2 max-w-[280px] w-full"
+                            >
+                                <span className="text-black font-bold text-sm">¿Seguro que quieres abandonar?</span>
+                                <div className="flex gap-2 w-full">
+                                    <button
+                                        onClick={() => {
+                                            handleLeaveRoom();
+                                            setShowLeaveConfirmation(false);
+                                        }}
+                                        className="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold text-xs border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+                                    >
+                                        Sí, salir
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLeaveConfirmation(false)}
+                                        className="flex-1 bg-gray-200 text-black py-2 rounded-xl font-bold text-xs border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            </motion.div>
+                        ) : (
+                            <button
+                                onClick={() => setShowLeaveConfirmation(true)}
+                                className="bg-white/80 hover:bg-white text-black/60 font-bold text-[10px] uppercase tracking-wider py-1.5 px-4 rounded-full border-2 border-black/20 hover:border-black/40 shadow-sm transition-all active:scale-95"
+                            >
+                                🚪 Abandonar partida
+                            </button>
+                        )}
+                    </div>
+                )
+            }
         </main >
     );
 }

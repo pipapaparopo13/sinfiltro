@@ -681,7 +681,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                         times: [0, 0.05, 0.9, 1],
                                         ease: "easeInOut"
                                     }}
-                                    className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 max-w-[200px]"
+                                    className="absolute transform -translate-x-1/2 -translate-y-1/2 z-50 max-w-[200px]"
                                     style={{
                                         left: `${msg.x}%`,
                                         top: `${msg.y}%`,
