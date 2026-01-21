@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/join/page.tsx -> @/lib/firebase\":{\"id\":\"app/join/page.tsx -> @/lib/firebase\",\"files\":[]},\"data/prompts.ts -> @/lib/customPrompts\":{\"id\":\"data/prompts.ts -> @/lib/customPrompts\",\"files\":[\"static/chunks/_app-pages-browser_src_lib_customPrompts_ts.js\"]}}"
