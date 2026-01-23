@@ -60,24 +60,38 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             (snapshot) => {
                 if (!snapshot.exists()) {
                     console.log("📺 TV: Room doesn't exist, creating new room:", roomCode);
+                    const initialGameState = createInitialGameState();
+                    console.log("📺 TV: Creating room with gameState:", initialGameState);
                     // Room doesn't exist, create it
                     set(roomRef, {
                         id: roomCode,
                         createdAt: Date.now(),
                         lastActive: Date.now(),
                         hostId: "",
-                        gameState: createInitialGameState(),
+                        gameState: initialGameState,
                         players: {},
                         matches: [],
                         prompts: [],
                     });
                 } else {
                     const roomData = snapshot.val();
-                    // Update heartbeat on connect
-                    update(roomRef, { lastActive: Date.now() });
+                    console.log("📺 TV: Room already exists with data:", roomData);
+
+                    // CRITICAL FIX: Ensure gameState exists even if room already exists
+                    if (!roomData.gameState) {
+                        console.log("⚠️ TV: Room exists but gameState is missing! Creating it now...");
+                        update(roomRef, {
+                            gameState: createInitialGameState(),
+                            lastActive: Date.now()
+                        });
+                    } else {
+                        console.log("✅ TV: Room gameState exists:", roomData.gameState.status);
+                        // Update heartbeat on connect
+                        update(roomRef, { lastActive: Date.now() });
+                    }
 
                     const playerCount = roomData.players ? Object.keys(roomData.players).length : 0;
-                    console.log("📺 TV: Room already exists with", playerCount, "players:", roomData.players);
+                    console.log("📺 TV: Room has", playerCount, "players");
                 }
                 // If room exists, we're reconnecting - just listen to changes
             },

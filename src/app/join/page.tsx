@@ -148,8 +148,12 @@ function JoinContent() {
                     setIsHost(existingPlayers[playerId].isHost);
                     setError("");
 
+
                     if (currentGameState) {
+                        console.log("✅ [AUTO-RECONNECT] Setting gameState:", currentGameState.status);
                         setGameState(currentGameState);
+                    } else {
+                        console.log("⚠️ [AUTO-RECONNECT] WARNING: No gameState in room!");
                     }
                 } else {
                     console.log("⚠️ Player not found in room, clearing saved roomId");
@@ -377,6 +381,14 @@ function JoinContent() {
                     setIsJoined(true);
                     setIsHost(existingPlayers[playerId].isHost);
                     setError("");
+
+                    // CRITICAL: Set gameState so lobby renders
+                    if (currentGameState) {
+                        console.log("✅ [RECONNECT] Setting gameState:", currentGameState.status);
+                        setGameState(currentGameState);
+                    } else {
+                        console.log("⚠️ [RECONNECT] WARNING: No gameState in room!");
+                    }
                     return;
                 } else {
                     // Same ID but different name - this is a different player in the same browser
@@ -411,6 +423,14 @@ function JoinContent() {
                     setIsJoined(true);
                     setIsHost(false);
                     setError("");
+
+                    // CRITICAL: Set gameState so lobby renders
+                    if (currentGameState) {
+                        console.log("✅ [DUPLICATE ID] Setting gameState:", currentGameState.status);
+                        setGameState(currentGameState);
+                    } else {
+                        console.log("⚠️ [DUPLICATE ID] WARNING: No gameState in room!");
+                    }
                     return;
                 }
             }
@@ -450,6 +470,16 @@ function JoinContent() {
             setIsJoined(true);
             setError("");
             console.log("🎉 Successfully joined room!");
+            console.log("🔍 DEBUG JOIN - currentGameState:", currentGameState);
+            console.log("🔍 DEBUG JOIN - gameState status:", currentGameState?.status);
+
+            // CRITICAL: Set initial gameState if it exists
+            if (currentGameState) {
+                console.log("✅ Setting initial gameState from room data");
+                setGameState(currentGameState);
+            } else {
+                console.log("⚠️ WARNING: No gameState in room! This will cause the lobby not to render!");
+            }
         } catch (err: any) {
             console.error("❌ Join error:", err);
             const errorMessage = err?.message || err?.code || String(err);
@@ -676,6 +706,9 @@ function JoinContent() {
         currentMatch &&
         (currentMatch.playerA === playerId || currentMatch.playerB === playerId);
 
+    // 🐛 DEBUG: Log render state
+    console.log("🎨 RENDER - isJoined:", isJoined, "| gameState:", gameState?.status || "NULL", "| players count:", Object.keys(players).length);
+
     // JOIN SCREEN
     if (!isJoined) {
         return (
@@ -838,6 +871,7 @@ function JoinContent() {
                     </motion.div>
                 </div>
             </header>
+
 
             <AnimatePresence mode="wait">
                 {/* LOBBY */}
