@@ -16,6 +16,7 @@ import {
     GameState,
     Player,
     Match,
+    updatePlayerStreak,
 } from "@/lib/gameLogic";
 import { getRandomPrompts } from "@/data/prompts";
 import GameHost from "@/app/components/GameHost";
@@ -564,14 +565,27 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             spec: { A: specVotesA, B: specVotesB }
         });
 
-        // Points only from regular votes
-        const scoreA = calculateScore(regularVotesA, totalRegularVoters, isLastRound);
-        const scoreB = calculateScore(regularVotesB, totalRegularVoters, isLastRound);
+        // ✨ Get current win streaks for bonus calculation
+        const playerAStreak = players[match.playerA]?.streak?.currentWins || 0;
+        const playerBStreak = players[match.playerB]?.streak?.currentWins || 0;
 
-        // Update scores in memory
+        // Points only from regular votes (now with streak bonuses)
+        const scoreA = calculateScore(regularVotesA, totalRegularVoters, isLastRound, playerAStreak);
+        const scoreB = calculateScore(regularVotesB, totalRegularVoters, isLastRound, playerBStreak);
+
+        // Update scores and streaks
         const currentPlayers = { ...players };
-        if (currentPlayers[match.playerA]) currentPlayers[match.playerA].score += scoreA.total;
-        if (currentPlayers[match.playerB]) currentPlayers[match.playerB].score += scoreB.total;
+        const playerAWon = regularVotesA > regularVotesB;
+        const playerBWon = regularVotesB > regularVotesA;
+
+        if (currentPlayers[match.playerA]) {
+            currentPlayers[match.playerA].score += scoreA.total;
+            currentPlayers[match.playerA] = updatePlayerStreak(currentPlayers[match.playerA], playerAWon);
+        }
+        if (currentPlayers[match.playerB]) {
+            currentPlayers[match.playerB].score += scoreB.total;
+            currentPlayers[match.playerB] = updatePlayerStreak(currentPlayers[match.playerB], playerBWon);
+        }
 
         await update(dbRef(`rooms/${roomId}/players`), currentPlayers);
         setShowResults(true);
