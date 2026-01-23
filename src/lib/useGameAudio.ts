@@ -13,7 +13,10 @@ type SoundType =
     | "podium"
     | "countdown"
     | "whoosh"
-    | "fail";
+    | "fail"
+    | "leave"      // ✨ New
+    | "message"    // ✨ New
+    | "click";     // ✨ New
 
 type MusicType = "lobby" | "gameplay" | "voting" | "results";
 
@@ -21,8 +24,8 @@ export function useGameAudio() {
     const audioContextRef = useRef<AudioContext | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const musicOscillatorsRef = useRef<OscillatorNode[]>([]);
-    const [isMuted, setIsMuted] = useState(true); // Start muted by default
-    const [volume, setVolume] = useState(0.3);
+    const [isMuted, setIsMuted] = useState(false); // Changed to false to try autoplay
+    const [volume, setVolume] = useState(0.5); // Increased default volume
     const currentMusicRef = useRef<MusicType | null>(null);
 
     // Initialize AudioContext on first interaction
@@ -49,17 +52,44 @@ export function useGameAudio() {
         }
     }, [isMuted, volume]);
 
-    // Play a synthesized sound effect
+    // Play a sound effect (MP3 or synthesized)
     const playSound = useCallback((type: SoundType) => {
         initAudio();
+
+        // 🎵 MP3 Sound Effects Map
+        const sfxFiles: Record<string, string> = {
+            'submit': '/sounds/envio_preguntas.mp3',
+            'leave': '/sounds/abandono.mp3',
+            'podium': '/sounds/ganar.mp3', // Final win
+            'start': '/sounds/empezar.mp3',
+            'message': '/sounds/mensaje.mp3',
+            'click': '/sounds/click.mp3',
+            // Mapeos adicionales
+            'winner': '/sounds/ganar.mp3',
+        };
+
+        const mp3Src = sfxFiles[type];
+        if (mp3Src) {
+            const audio = new Audio(mp3Src);
+            audio.volume = isMuted ? 0 : volume;
+            audio.play().catch(() => {
+                // If MP3 fails, fallback to synth
+                playSynthSound(type);
+            });
+            return;
+        }
+
+        playSynthSound(type);
+    }, [initAudio, isMuted, volume]);
+
+    // Extracted Synth Logic
+    const playSynthSound = (type: SoundType) => {
         if (!audioContextRef.current || !gainNodeRef.current) return;
 
         const ctx = audioContextRef.current;
         const now = ctx.currentTime;
-
-        // Create temporary gain for this sound
         const soundGain = ctx.createGain();
-        soundGain.connect(gainNodeRef.current);
+        soundGain.connect(gainNodeRef.current!);
 
         switch (type) {
             case "join": {
@@ -243,8 +273,22 @@ export function useGameAudio() {
                 osc.stop(now + 0.5);
                 break;
             }
+            case "leave":
+            case "message":
+            case "click": {
+                // Short blip
+                const osc = ctx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(800, now);
+                soundGain.gain.setValueAtTime(0.1, now);
+                soundGain.gain.linearRampToValueAtTime(0, now + 0.1);
+                osc.connect(soundGain);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            }
         }
-    }, [initAudio]);
+    };
 
     // Reference for current HTML5 audio element
     const currentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -267,11 +311,25 @@ export function useGameAudio() {
         const mp3Src = mp3Files[type];
 
         if (mp3Src) {
+            console.log(`🎵 Attempting to play MP3: ${mp3Src} (Muted: ${isMuted}, Vol: ${volume})`);
             // Play MP3 file
             const audio = new Audio(mp3Src);
             audio.loop = true;
             audio.volume = isMuted ? 0 : (volume * 0.5); // Slightly lower volume for BG music
-            audio.play().catch(err => console.log("Audio play failed (maybe needs interaction):", err));
+
+            const playPromise = audio.play();
+
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log("✅ Audio playback started successfully");
+                    })
+                    .catch(error => {
+                        console.error("❌ Audio play failed:", error);
+                        console.log("👉 User interaction might be required to start audio.");
+                    });
+            }
+
             currentAudioRef.current = audio;
             return;
         }

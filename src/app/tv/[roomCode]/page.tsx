@@ -183,6 +183,15 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             unsubRoom();
         };
     }, [roomId]);
+    // Start lobby music on mount
+    useEffect(() => {
+        if (gameState.status === 'LOBBY') {
+            const timer = setTimeout(() => {
+                playMusic('lobby');
+            }, 1000); // Small delay to allow interaction
+            return () => clearTimeout(timer);
+        }
+    }, [gameState.status, playMusic]);
 
     // Sound effects on game state changes
     useEffect(() => {
@@ -225,6 +234,15 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             playSound("winner");
         }
     }, [showResults, playSound]);
+
+    // ✨ Play sound when new chat message arrives
+    const prevChatCountRef = useRef(0);
+    useEffect(() => {
+        if (chatMessages.length > prevChatCountRef.current && prevChatCountRef.current > 0) {
+            playSound("message");
+        }
+        prevChatCountRef.current = chatMessages.length;
+    }, [chatMessages, playSound]);
 
     const [penalizedPlayers, setPenalizedPlayers] = useState<string[]>([]);
 
@@ -745,12 +763,12 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                         top: `${msg.y}%`,
                                     }}
                                 >
-                                    <div className="relative bg-white text-black px-4 py-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg leading-tight break-words"
+                                    <div className="relative bg-yellow-100 text-black px-4 py-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] font-bold text-lg leading-tight break-words"
                                         style={{ transform: `rotate(${msg.rotation || -2}deg)` }}
                                     >
                                         "{msg.text}"
                                         {/* Little tail for speech bubble */}
-                                        <div className="absolute -bottom-3 left-4 w-4 h-4 bg-white border-r-4 border-b-4 border-black transform rotate-45"></div>
+                                        <div className="absolute -bottom-3 left-4 w-4 h-4 bg-yellow-100 border-r-4 border-b-4 border-black transform rotate-45"></div>
                                     </div>
                                 </motion.div>
                             ))}
