@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getDatabase, ref, set, get, onValue, push, update, remove, runTransaction } from "firebase/database";
 
 const firebaseConfig = {
@@ -11,7 +11,8 @@ const firebaseConfig = {
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase only if config is complete or we are in the browser
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const database = getDatabase(app);
 
 // Helpers para la base de datos
