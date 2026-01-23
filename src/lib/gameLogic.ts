@@ -15,6 +15,14 @@ export interface Player {
         characterName: string; // Nombre del personaje
         imageUrl: string; // URL de la imagen del personaje
     };
+    // ✨ NEW: Mejoras de jugabilidad
+    streak?: {
+        currentWins: number;
+        currentLosses: number;
+        longestWinStreak: number;
+    };
+    powerUps?: string[]; // IDs de power-ups activos
+    activePowerUp?: string | null; // Power-up activo en este enfrentamiento
 }
 
 export interface Match {
@@ -38,6 +46,9 @@ export interface GameState {
     inputTimeLimit: number;
     voteTimeLimit: number;
     phaseEndTime?: number;
+    // ✨ NEW: Configuración de modo de juego
+    gameMode?: string; // 'classic', 'quick', 'epic', 'spicy', 'family'
+    selectedCategory?: string; // all, food, love, work, etc.
 }
 
 export interface Room {
@@ -130,35 +141,74 @@ export function getPlayerPrompts(
     return playerPrompts;
 }
 
-// Calcular puntuación
+// Calcular puntuación con bonos de racha
 export function calculateScore(
     votesReceived: number,
     totalVoters: number,
-    isLastRound: boolean
-): { baseScore: number; quiplashBonus: number; multiplier: number; total: number } {
+    isLastRound: boolean,
+    currentWinStreak: number = 0
+): { baseScore: number; quiplashBonus: number; multiplier: number; streakBonus: number; total: number } {
     const baseScore = votesReceived * 100;
     const isQuiplash = votesReceived === totalVoters && totalVoters > 1;
     const quiplashBonus = isQuiplash ? 500 : 0;
-    const multiplier = isLastRound ? 2 : 1;
+    const roundMultiplier = isLastRound ? 2 : 1;
+
+    // ✨ NEW: Bonus por racha
+    let streakMultiplier = 1;
+    if (currentWinStreak >= 7) {
+        streakMultiplier = 2.5; // ¡Legendario!
+    } else if (currentWinStreak >= 5) {
+        streakMultiplier = 2; // ¡Imparable!
+    } else if (currentWinStreak >= 3) {
+        streakMultiplier = 1.5; // ¡En Racha!
+    }
+
+    const streakBonus = currentWinStreak >= 3 ? Math.floor(baseScore * (streakMultiplier - 1)) : 0;
+    const totalMultiplier = roundMultiplier * streakMultiplier;
 
     return {
         baseScore,
         quiplashBonus,
-        multiplier,
-        total: (baseScore + quiplashBonus) * multiplier
+        multiplier: totalMultiplier,
+        streakBonus,
+        total: Math.floor((baseScore + quiplashBonus) * totalMultiplier)
     };
 }
 
 // Estado inicial de una partida
-export function createInitialGameState(): GameState {
+export function createInitialGameState(
+    gameMode?: string,
+    selectedCategory?: string
+): GameState {
+    // Si no se especifica modo, usar 'classic'
+    const mode = gameMode || 'classic';
+
+    // Configuración por defecto (modo clásico)
+    let config = {
+        totalRounds: 2,
+        inputTimeLimit: 90,
+        voteTimeLimit: 20
+    };
+
+    // Sobrescribir según el modo
+    if (mode === 'quick') {
+        config = { totalRounds: 1, inputTimeLimit: 60, voteTimeLimit: 15 };
+    } else if (mode === 'epic') {
+        config = { totalRounds: 5, inputTimeLimit: 90, voteTimeLimit: 20 };
+    } else if (mode === 'family') {
+        config = { totalRounds: 2, inputTimeLimit: 120, voteTimeLimit: 25 };
+    }
+
     return {
         status: 'LOBBY',
         currentRound: 1,
-        totalRounds: 2,
+        totalRounds: config.totalRounds,
         timer: 0,
         currentMatchIndex: 0,
-        inputTimeLimit: 90,
-        voteTimeLimit: 20
+        inputTimeLimit: config.inputTimeLimit,
+        voteTimeLimit: config.voteTimeLimit,
+        gameMode: mode,
+        selectedCategory: selectedCategory || 'all'
     };
 }
 
@@ -294,7 +344,43 @@ export function createPlayer(
         responses: {},
         hasSubmitted: false,
         submittedRound: 0,
-        avatar: customAvatar || generateAvatar()
+        avatar: customAvatar || generateAvatar(),
+        streak: {
+            currentWins: 0,
+            currentLosses: 0,
+            longestWinStreak: 0
+        },
+        powerUps: [],
+        activePowerUp: null
     };
 }
 
+// ✨ NEW: Actualizar racha del jugador
+export function updatePlayerStreak(player: Player, won: boolean): Player {
+    if (!player.streak) {
+        player.streak = { currentWins: 0, currentLosses: 0, longestWinStreak: 0 };
+    }
+
+    if (won) {
+        player.streak.currentWins += 1;
+        player.streak.currentLosses = 0;
+
+        // Actualizar longest streak
+        if (player.streak.currentWins > player.streak.longestWinStreak) {
+            player.streak.longestWinStreak = player.streak.currentWins;
+        }
+    } else {
+        player.streak.currentLosses += 1;
+        player.streak.currentWins = 0;
+    }
+
+    return player;
+}
+
+// ✨ NEW: Obtener nombre de racha actual
+export function getStreakName(wins: number): { name: string; emoji: string } | null {
+    if (wins >= 7) return { name: '¡Legendario!', emoji: '👑' };
+    if (wins >= 5) return { name: '¡Imparable!', emoji: '⚡' };
+    if (wins >= 3) return { name: '¡En Racha!', emoji: '🔥' };
+    return null;
+}
