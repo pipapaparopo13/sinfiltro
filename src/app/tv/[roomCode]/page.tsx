@@ -982,10 +982,10 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                         initial={{ x: -100, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
                                         transition={{ delay: 0.5 }}
-                                        className={`response-card relative pt-6 ${showResults
+                                        className={`response-card relative pt-6 transition-all duration-500 ${showResults
                                             ? (currentMatch.votesA?.filter(id => !players[id]?.isSpectator).length || 0) > (currentMatch.votesB?.filter(id => !players[id]?.isSpectator).length || 0)
-                                                ? "bg-yellow-100 border-4 border-yellow-500 ring-8 ring-yellow-400/50 shadow-2xl shadow-yellow-500/40"
-                                                : "border-gray-400 opacity-60"
+                                                ? "bg-yellow-50 border-8 border-yellow-500 shadow-[0_0_60px_rgba(234,179,8,0.8)] scale-105 z-20"
+                                                : "border-gray-400 opacity-50 scale-95 grayscale"
                                             : ""
                                             }`}
                                     >
@@ -1027,10 +1027,10 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                         initial={{ x: 100, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
                                         transition={{ delay: 1.5 }}
-                                        className={`response-card relative pt-6 ${showResults
+                                        className={`response-card relative pt-6 transition-all duration-500 ${showResults
                                             ? (currentMatch.votesB?.filter(id => !players[id]?.isSpectator).length || 0) > (currentMatch.votesA?.filter(id => !players[id]?.isSpectator).length || 0)
-                                                ? "bg-yellow-100 border-4 border-yellow-500 ring-8 ring-yellow-400/50 shadow-2xl shadow-yellow-500/40"
-                                                : "border-gray-400 opacity-60"
+                                                ? "bg-yellow-50 border-8 border-yellow-500 shadow-[0_0_60px_rgba(234,179,8,0.8)] scale-105 z-20"
+                                                : "border-gray-400 opacity-50 scale-95 grayscale"
                                             : ""
                                             }`}
                                     >
