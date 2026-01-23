@@ -65,6 +65,10 @@ function JoinContent() {
     const [libraryLoading, setLibraryLoading] = useState(false);
     const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
 
+    // ✨ NEW: Game mode and category selection
+    const [selectedGameMode, setSelectedGameMode] = useState<string>('classic');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
     // Helper to update roomId and persist to sessionStorage
     const updateRoomId = useCallback((newRoomId: string) => {
         setRoomId(newRoomId);
@@ -496,6 +500,12 @@ function JoinContent() {
             return;
         }
 
+        // ✨ NEW: Get game mode configuration
+        const { GAME_MODES } = await import('@/lib/gameModes');
+        const mode = GAME_MODES[selectedGameMode as keyof typeof GAME_MODES] || GAME_MODES.classic;
+
+        console.log(`🎮 Starting game in ${mode.name} mode with ${playerIds.length} players`);
+
         // Get prompts (custom or default)
         const prompts = await getPromptsForGame(playerIds.length, loadedLibrary?.id);
         const newMatches = distributePrompts(playerIds, prompts);
@@ -507,12 +517,14 @@ function JoinContent() {
             gameState: {
                 status: "INPUT",
                 currentRound: 1,
-                totalRounds: 2,
-                timer: 90,
+                totalRounds: mode.rounds,
+                timer: mode.timeLimit,
                 currentMatchIndex: 0,
-                inputTimeLimit: 90,
-                voteTimeLimit: 20,
-                phaseEndTime: Date.now() + 90000,
+                inputTimeLimit: mode.timeLimit,
+                voteTimeLimit: mode.voteTimeLimit,
+                phaseEndTime: Date.now() + (mode.timeLimit * 1000),
+                gameMode: selectedGameMode,
+                selectedCategory: selectedCategory
             },
         });
     };
@@ -894,6 +906,31 @@ function JoinContent() {
                                     <p className="text-gray-400 mb-4 text-sm">
                                         {Object.keys(players).filter(id => !players[id]?.isSpectator).length} jugadores conectados
                                     </p>
+
+                                    {/* ✨ NEW: Game Mode Selector */}
+                                    <div className="glass-card p-3 mb-4">
+                                        <p className="text-sm font-bold text-black mb-3">🎮 Modo de Juego</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { id: 'classic', emoji: '🎮', name: 'Clásico' },
+                                                { id: 'quick', emoji: '⚡', name: 'Rápido' },
+                                                { id: 'epic', emoji: '👑', name: 'Épico' },
+                                                { id: 'spicy', emoji: '🌶️', name: 'Picante' },
+                                                { id: 'family', emoji: '👨‍👩‍👧‍👦', name: 'Familiar' }
+                                            ].map(mode => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => setSelectedGameMode(mode.id)}
+                                                    className={`px-3 py-2 rounded-lg font-bold text-sm transition-all ${selectedGameMode === mode.id
+                                                            ? 'bg-purple-600 text-white border-2 border-black shadow-lg'
+                                                            : 'bg-white/70 text-black border-2 border-black/20 hover:bg-white'
+                                                        }`}
+                                                >
+                                                    {mode.emoji} {mode.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
 
                                     {/* Custom Library Section */}
                                     <div className="glass-card p-3 mb-4">
