@@ -43,6 +43,10 @@ export function useGameAudio() {
         if (gainNodeRef.current) {
             gainNodeRef.current.gain.value = isMuted ? 0 : volume;
         }
+        // Also update MP3 volume if playing
+        if (currentAudioRef.current) {
+            currentAudioRef.current.volume = isMuted ? 0 : (volume * 0.5);
+        }
     }, [isMuted, volume]);
 
     // Play a synthesized sound effect
@@ -242,15 +246,39 @@ export function useGameAudio() {
         }
     }, [initAudio]);
 
-    // Play fun background music (chiptune style)
+    // Reference for current HTML5 audio element
+    const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Play fun background music (MP3 or chiptune fallback)
     const playMusic = useCallback((type: MusicType) => {
         initAudio();
-        if (!audioContextRef.current || !gainNodeRef.current) return;
-
         // Stop current music if playing
         stopMusic();
 
         currentMusicRef.current = type;
+
+        // Define MP3 mapping
+        const mp3Files: Record<string, string> = {
+            'lobby': '/sounds/game1.mp3',
+            'gameplay': '/sounds/game2.mp3',
+            // Default to game2 for others if needed, or fallback to synth
+        };
+
+        const mp3Src = mp3Files[type];
+
+        if (mp3Src) {
+            // Play MP3 file
+            const audio = new Audio(mp3Src);
+            audio.loop = true;
+            audio.volume = isMuted ? 0 : (volume * 0.5); // Slightly lower volume for BG music
+            audio.play().catch(err => console.log("Audio play failed (maybe needs interaction):", err));
+            currentAudioRef.current = audio;
+            return;
+        }
+
+        // --- FALLBACK TO SYNTH (for types without MP3 or error) ---
+        if (!audioContextRef.current || !gainNodeRef.current) return;
+
         const ctx = audioContextRef.current;
 
         // Fun, cheerful melody patterns (notes in Hz)
@@ -323,11 +351,17 @@ export function useGameAudio() {
 
         // Store interval for cleanup
         (musicOscillatorsRef as any).intervalId = intervalId;
-    }, [initAudio]);
+    }, [initAudio, isMuted, volume]); // Added dependencies
 
     // Stop background music
     const stopMusic = useCallback(() => {
-        // Clear the interval if exists
+        // Stop MP3 if playing
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current = null;
+        }
+
+        // Clear the interval if exists (synth)
         if ((musicOscillatorsRef as any).intervalId) {
             clearInterval((musicOscillatorsRef as any).intervalId);
             (musicOscillatorsRef as any).intervalId = null;
