@@ -506,8 +506,8 @@ function JoinContent() {
 
         console.log(`🎮 Starting game in ${mode.name} mode with ${playerIds.length} players`);
 
-        // Get prompts (custom or default)
-        const prompts = await getPromptsForGame(playerIds.length, loadedLibrary?.id);
+        // Get prompts (custom or default, or spicy if mode is spicy)
+        const prompts = await getPromptsForGame(playerIds.length, loadedLibrary?.id, selectedGameMode);
         const newMatches = distributePrompts(playerIds, prompts);
 
         await update(dbRef(`rooms/${roomId}`), {

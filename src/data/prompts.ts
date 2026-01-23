@@ -394,7 +394,19 @@ export function getRandomPrompts(count: number): string[] {
 }
 
 // Función para obtener prompts de una biblioteca personalizada o los predeterminados
-export async function getPromptsForGame(count: number, customLibraryCode?: string): Promise<string[]> {
+export async function getPromptsForGame(
+    count: number,
+    customLibraryCode?: string,
+    gameMode?: string
+): Promise<string[]> {
+
+    // 🌶️ Si el modo es picante, usar prompts picantes
+    if (gameMode === 'spicy') {
+        const { getRandomSpicyPrompts } = await import('./spicyPrompts');
+        console.log('🌶️ Using SPICY prompts for adult mode!');
+        return getRandomSpicyPrompts(count);
+    }
+
     if (customLibraryCode) {
         try {
             // Import dinamically to avoid circular dependency
@@ -425,3 +437,4 @@ export async function getPromptsForGame(count: number, customLibraryCode?: strin
     // Fallback to default prompts
     return getRandomPrompts(count);
 }
+
