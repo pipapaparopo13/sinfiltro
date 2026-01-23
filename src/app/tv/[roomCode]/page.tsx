@@ -1220,6 +1220,11 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                         />
                                         <p className="text-sm font-black mt-2 text-black uppercase">{player.name}</p>
                                         <p className="text-xs font-bold text-yellow-700 bg-yellow-100 px-2 rounded-full border border-yellow-300 -mt-1">{player.score} pts</p>
+                                        {player.streak && player.streak.longestWinStreak >= 3 && (
+                                            <p className="text-[10px] font-black text-white bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full mt-1">
+                                                {player.streak.longestWinStreak >= 7 ? '👑' : player.streak.longestWinStreak >= 5 ? '⚡' : '🔥'} Racha x{player.streak.longestWinStreak}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                         </div>

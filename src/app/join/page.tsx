@@ -882,6 +882,11 @@ function JoinContent() {
                     >
                         <span className="text-2xl font-bold text-black">{myScore}</span>
                         <span className="text-xs block text-black/70 italic">puntos</span>
+                        {players[playerId]?.streak && players[playerId].streak.currentWins >= 3 && (
+                            <div className="mt-1 px-2 py-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-full text-white text-[10px] font-black">
+                                {players[playerId].streak.currentWins >= 7 ? '👑' : players[playerId].streak.currentWins >= 5 ? '⚡' : '🔥'} x{players[playerId].streak.currentWins}
+                            </div>
+                        )}
                     </motion.div>
                 </div>
             </header>
@@ -922,8 +927,8 @@ function JoinContent() {
                                                     key={mode.id}
                                                     onClick={() => setSelectedGameMode(mode.id)}
                                                     className={`px-3 py-2 rounded-lg font-bold text-sm transition-all ${selectedGameMode === mode.id
-                                                            ? 'bg-purple-600 text-white border-2 border-black shadow-lg'
-                                                            : 'bg-white/70 text-black border-2 border-black/20 hover:bg-white'
+                                                        ? 'bg-purple-600 text-white border-2 border-black shadow-lg'
+                                                        : 'bg-white/70 text-black border-2 border-black/20 hover:bg-white'
                                                         }`}
                                                 >
                                                     {mode.emoji} {mode.name}
