@@ -1,5 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getDatabase, ref, set, get, onValue, push, update, remove, runTransaction } from "firebase/database";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getDatabase, ref, set, get, onValue, push, update, remove, runTransaction, Database } from "firebase/database";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,10 +11,36 @@ const firebaseConfig = {
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 };
 
-// Initialize Firebase only if config is complete or we are in the browser
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const database = getDatabase(app);
+// Lazy initialization - only initialize Firebase when actually needed and only in browser
+let app: FirebaseApp | null = null;
+let db: Database | null = null;
 
-// Helpers para la base de datos
-export const dbRef = (path: string) => ref(database, path);
+function getFirebaseApp(): FirebaseApp {
+    if (typeof window === 'undefined') {
+        // Server-side: throw a clear error if someone tries to use Firebase during SSR/build
+        throw new Error('Firebase can only be used on the client side');
+    }
+
+    if (!app) {
+        app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    }
+    return app;
+}
+
+function getDb(): Database {
+    if (!db) {
+        db = getDatabase(getFirebaseApp());
+    }
+    return db;
+}
+
+// Export a getter for the database instead of the database directly
+export const database = {
+    get instance() {
+        return getDb();
+    }
+};
+
+// Helpers para la base de datos - these will only work client-side
+export const dbRef = (path: string) => ref(getDb(), path);
 export { set, get, onValue, push, update, remove, runTransaction };
