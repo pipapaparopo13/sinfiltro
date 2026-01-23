@@ -22,6 +22,7 @@ import { getRandomPrompts } from "@/data/prompts";
 import GameHost from "@/app/components/GameHost";
 import { useGameAudio } from "@/lib/useGameAudio";
 import { PlayerAvatar } from "@/app/components/PlayerAvatar";
+import { QuiplashNotification } from "@/app/components/QuiplashNotification";
 
 interface ChatMessage {
     id: string;
@@ -43,6 +44,8 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
     const [showResults, setShowResults] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    // ✨ NEW: SinFiltro (Quiplash) notification state
+    const [quiplashEvent, setQuiplashEvent] = useState<{ show: boolean, playerName: string }>({ show: false, playerName: '' });
 
     // Audio system
     const { playSound, playMusic, stopMusic, initAudio } = useGameAudio();
@@ -568,6 +571,31 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         // ✨ Get current win streaks for bonus calculation
         const playerAStreak = players[match.playerA]?.streak?.currentWins || 0;
         const playerBStreak = players[match.playerB]?.streak?.currentWins || 0;
+
+
+        // Detect Quiplash (clean sweep with >1 voter)
+        const isQuiplashA = regularVotesA === totalRegularVoters && totalRegularVoters > 1;
+        const isQuiplashB = regularVotesB === totalRegularVoters && totalRegularVoters > 1;
+
+        if (isQuiplashA) {
+            console.log("🔥 QUIPLASH! Player A swept the votes!");
+            playSound('winner'); // Maybe add a special sound later
+            setQuiplashEvent({
+                show: true,
+                playerName: players[match.playerA]?.name || 'Jugador'
+            });
+            // Hide after 4 seconds
+            setTimeout(() => setQuiplashEvent(prev => ({ ...prev, show: false })), 4000);
+        } else if (isQuiplashB) {
+            console.log("🔥 QUIPLASH! Player B swept the votes!");
+            playSound('winner');
+            setQuiplashEvent({
+                show: true,
+                playerName: players[match.playerB]?.name || 'Jugador'
+            });
+            // Hide after 4 seconds
+            setTimeout(() => setQuiplashEvent(prev => ({ ...prev, show: false })), 4000);
+        }
 
         // Points only from regular votes (now with streak bonuses)
         const scoreA = calculateScore(regularVotesA, totalRegularVoters, isLastRound, playerAStreak);
@@ -1231,6 +1259,11 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                     </div>
                 </div>
             )}
+            {/* ✨ SINFILTRO! Notification Overlay */}
+            <QuiplashNotification
+                show={quiplashEvent.show}
+                playerName={quiplashEvent.playerName}
+            />
         </main>
     );
 }

@@ -149,8 +149,10 @@ export function calculateScore(
     currentWinStreak: number = 0
 ): { baseScore: number; quiplashBonus: number; multiplier: number; streakBonus: number; total: number } {
     const baseScore = votesReceived * 100;
+
+    // 🏆 QUIPLASH BONUS: Pleno de votos = +1000 puntos extra!
     const isQuiplash = votesReceived === totalVoters && totalVoters > 1;
-    const quiplashBonus = isQuiplash ? 500 : 0;
+    const quiplashBonus = isQuiplash ? 1000 : 0;
     const roundMultiplier = isLastRound ? 2 : 1;
 
     // ✨ NEW: Bonus por racha
