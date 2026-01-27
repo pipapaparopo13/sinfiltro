@@ -4,7 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 
+import { useGameAudio } from "@/lib/useGameAudio";
+
 export default function Home() {
+    const { playSound } = useGameAudio();
+
     return (
         <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-lobby">
             <motion.div
@@ -30,7 +34,7 @@ export default function Home() {
                 </motion.div>
 
                 <div className="flex flex-col md:flex-row gap-6 justify-center mt-8">
-                    <Link href="/tv">
+                    <Link href="/tv" onClick={() => playSound('click')}>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -40,7 +44,7 @@ export default function Home() {
                         </motion.button>
                     </Link>
 
-                    <Link href="/join">
+                    <Link href="/join" onClick={() => playSound('click')}>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -51,7 +55,7 @@ export default function Home() {
                     </Link>
                 </div>
 
-                <Link href="/biblioteca" className="mt-8 block">
+                <Link href="/biblioteca" className="mt-8 block" onClick={() => playSound('click')}>
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

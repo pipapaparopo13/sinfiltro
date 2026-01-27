@@ -14,21 +14,27 @@ type SoundType =
     | "countdown"
     | "whoosh"
     | "fail"
-    | "leave"      // ✨ New
-    | "message"    // ✨ New
-    | "click";     // ✨ New
+    | "leave"
+    | "message"
+    | "click"
+    // ✨ Nuevos sonidos
+    | "streak"
+    | "drumroll"
+    | "counting"
+    | "versus";
 
 type MusicType = "lobby" | "gameplay" | "voting" | "results";
 
 export function useGameAudio() {
+    // ... (refs y state igual)
     const audioContextRef = useRef<AudioContext | null>(null);
     const gainNodeRef = useRef<GainNode | null>(null);
     const musicOscillatorsRef = useRef<OscillatorNode[]>([]);
-    const [isMuted, setIsMuted] = useState(false); // Changed to false to try autoplay
-    const [volume, setVolume] = useState(0.5); // Increased default volume
+    const [isMuted, setIsMuted] = useState(false);
+    const [volume, setVolume] = useState(0.5);
     const currentMusicRef = useRef<MusicType | null>(null);
 
-    // Initialize AudioContext on first interaction
+    // ... (initAudio y useEffect volumen igual)
     const initAudio = useCallback(() => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -41,12 +47,10 @@ export function useGameAudio() {
         }
     }, [isMuted, volume]);
 
-    // Update volume when changed
     useEffect(() => {
         if (gainNodeRef.current) {
             gainNodeRef.current.gain.value = isMuted ? 0 : volume;
         }
-        // Also update MP3 volume if playing
         if (currentAudioRef.current) {
             currentAudioRef.current.volume = isMuted ? 0 : (volume * 0.5);
         }
@@ -56,30 +60,37 @@ export function useGameAudio() {
     const playSound = useCallback((type: SoundType) => {
         initAudio();
 
-        // 🎵 MP3 Sound Effects Map
+        // 🎵 MP3 Sound Effects Map - ONLY user-provided MP3 files
         const sfxFiles: Record<string, string> = {
-            'submit': '/sounds/envio_preguntas.mp3',
+            'submit': '/sounds/envio preguntas.mp3',
             'leave': '/sounds/abandono.mp3',
-            'podium': '/sounds/ganar.mp3', // Final win
-            'start': '/sounds/empezar.mp3',
-            'message': '/sounds/mensaje.mp3',
+            'podium': '/sounds/ganar.mp3',
+            'start': '/sounds/Empezar.mp3',
+            'message': '/sounds/Mensaje.mp3',
             'click': '/sounds/click.mp3',
-            // Mapeos adicionales
             'winner': '/sounds/ganar.mp3',
+            'countdown': '/sounds/tiktak.mp3',
+            'streak': '/sounds/power.mp3',
+            'drumroll': '/sounds/redoble2.mp3',
+            'counting': '/sounds/cuento.mp3',
+            'fail': '/sounds/fail.mp3',
+            'versus': '/sounds/espada.mp3',
+            'whoosh': '/sounds/espada.mp3',
         };
 
         const mp3Src = sfxFiles[type];
         if (mp3Src) {
             const audio = new Audio(mp3Src);
             audio.volume = isMuted ? 0 : volume;
-            audio.play().catch(() => {
-                // If MP3 fails, fallback to synth
-                playSynthSound(type);
+            audio.play().catch((error) => {
+                // If MP3 fails, just log and don't play anything (no synth fallback)
+                console.log(`Sound ${type} failed to play:`, error);
             });
             return;
         }
 
-        playSynthSound(type);
+        // No MP3 available for this sound type - do nothing (no synth fallback)
+        console.log(`No MP3 defined for sound type: ${type}`);
     }, [initAudio, isMuted, volume]);
 
     // Extracted Synth Logic
@@ -275,7 +286,11 @@ export function useGameAudio() {
             }
             case "leave":
             case "message":
-            case "click": {
+            case "click":
+            case "streak":
+            case "drumroll":
+            case "counting":
+            case "versus": {
                 // Short blip
                 const osc = ctx.createOscillator();
                 osc.type = "sine";
@@ -325,8 +340,24 @@ export function useGameAudio() {
                         console.log("✅ Audio playback started successfully");
                     })
                     .catch(error => {
-                        console.error("❌ Audio play failed:", error);
-                        console.log("👉 User interaction might be required to start audio.");
+                        if (error.name === 'NotAllowedError') {
+                            console.log("🔇 Autoplay blocked. Waiting for interaction...");
+                            // Add a one-time listener to resume audio on ANY interaction
+                            const unlockAudio = () => {
+                                audio.play().catch(e => console.log("Still blocked:", e));
+                                if (audioContextRef.current?.state === 'suspended') {
+                                    audioContextRef.current.resume();
+                                }
+                                document.removeEventListener('click', unlockAudio);
+                                document.removeEventListener('keydown', unlockAudio);
+                                document.removeEventListener('touchstart', unlockAudio);
+                            };
+                            document.addEventListener('click', unlockAudio);
+                            document.addEventListener('keydown', unlockAudio);
+                            document.addEventListener('touchstart', unlockAudio);
+                        } else {
+                            console.error("❌ Audio play failed:", error);
+                        }
                     });
             }
 

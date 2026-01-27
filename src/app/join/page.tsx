@@ -21,11 +21,13 @@ import { getRandomPrompts, getPromptsForGame } from "@/data/prompts";
 import { distributePrompts } from "@/lib/gameLogic";
 import { PlayerAvatar } from "@/app/components/PlayerAvatar";
 import { getLibrary, CustomLibrary } from "@/lib/customPrompts";
+import { useGameAudio } from "@/lib/useGameAudio";
 
 function JoinContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const roomIdFromUrl = searchParams.get("room");
+    const { playSound } = useGameAudio();
 
     const [roomId, setRoomId] = useState(() => {
         // Only use roomIdFromUrl, not sessionStorage for initial state
@@ -328,6 +330,7 @@ function JoinContent() {
     }, [gameState?.status, gameState?.currentRound, matches, playerId]);
 
     const handleJoin = async () => {
+        playSound('click');
         if (!roomId.trim()) {
             setError("Introduce el código de la sala");
             return;
@@ -546,6 +549,7 @@ function JoinContent() {
     };
 
     const handleSubmitResponses = async () => {
+        playSound('click');
         // Check if all prompts are filled
         const allFilled = myPrompts.every(prompt => responses[prompt.promptIndex] && responses[prompt.promptIndex].trim() !== "");
 
@@ -573,6 +577,7 @@ function JoinContent() {
     };
 
     const handleVote = async (choice: "A" | "B") => {
+        playSound('click');
         if (!gameState || hasVoted) return;
 
         const matchIndex = gameState.currentMatchIndex;
@@ -626,6 +631,7 @@ function JoinContent() {
     };
 
     const handlePlayAgain = async () => {
+        playSound('click');
         console.log("🔄 Play Again - Resetting game state for all players");
 
         // Build player reset updates with proper Firebase paths
@@ -662,6 +668,7 @@ function JoinContent() {
     };
 
     const handleLeaveRoom = async () => {
+        playSound('click');
         console.log("🚪 Leaving room:", roomId);
 
         try {
@@ -785,7 +792,7 @@ function JoinContent() {
                                             <motion.button
                                                 key={char.id}
                                                 whileTap={{ scale: 0.9 }}
-                                                onClick={() => setSelectedCharacter(char)}
+                                                onClick={() => { playSound('click'); setSelectedCharacter(char); }}
                                                 className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all ${isSelected
                                                     ? 'bg-purple-600 border-4 border-black scale-105 shadow-xl'
                                                     : 'bg-white/50 border-2 border-black/20'
@@ -1145,10 +1152,7 @@ function JoinContent() {
                         exit={{ opacity: 0 }}
                         className="flex-1 flex flex-col items-center justify-center"
                     >
-                        {/* Mobile Timer */}
-                        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-1 rounded-full font-bold z-10 border border-white/20 shadow-lg">
-                            ⏱️ {Math.max(0, Math.ceil(((gameState.phaseEndTime || (now + 20000)) - now) / 1000))}s
-                        </div>
+                        {/* Timer removed from mobile - now only on TV */}
 
                         {isMyTurn ? (
                             <div className="text-center">

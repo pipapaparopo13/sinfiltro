@@ -209,7 +209,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                     break;
                 case "VOTING":
                     playSound("whoosh");
-                    playMusic("voting");
+                    // Music continues from INPUT phase (gameplay.mp3)
                     break;
                 case "PODIUM":
                     playSound("podium");
@@ -219,11 +219,21 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         }
     }, [gameState.status, playSound, playMusic, stopMusic]);
 
+    // ✨ Sound on new match (Versus)
+    const prevMatchIndexRef = useRef(-1);
+    useEffect(() => {
+        if (gameState.status === 'VOTING' && gameState.currentMatchIndex !== prevMatchIndexRef.current) {
+            // Avoid double sound on first match if whoosh handles it, but let's play it for impact
+            playSound("versus");
+        }
+        prevMatchIndexRef.current = gameState.currentMatchIndex;
+    }, [gameState.currentMatchIndex, gameState.status, playSound]);
+
     // Sound when player joins
     useEffect(() => {
         const currentCount = Object.keys(players).length;
         if (currentCount > prevPlayerCountRef.current && prevPlayerCountRef.current > 0) {
-            playSound("join");
+            // playSound("join"); // No MP3 available - silenced
         }
         prevPlayerCountRef.current = currentCount;
     }, [players, playSound]);
@@ -231,7 +241,9 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
     // Play sound when results are revealed
     useEffect(() => {
         if (showResults) {
-            playSound("winner");
+            playSound("counting");
+            // NOTE: 'winner' sound removed for individual rounds as requested. 
+            // It is reserved for the final PODIUM.
         }
     }, [showResults, playSound]);
 
@@ -266,6 +278,11 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             const interval = setInterval(() => {
                 const remaining = calculateRemaining();
                 setTimer(remaining);
+
+                // 🔊 TIKTAK SOUND (Last 10 seconds) - ONLY during INPUT phase
+                if (remaining <= 10 && remaining > 0 && gameState.status === "INPUT") {
+                    playSound("countdown");
+                }
 
                 if (remaining <= 0) {
                     clearInterval(interval);
@@ -434,137 +451,52 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         }
     }, [players, gameState.status, gameState.currentRound, handleInputTimeUp]);
 
+    // ✨ Status to prevent double-reveals
+    const [isRevealing, setIsRevealing] = useState(false);
+
     // Auto-reveal when all votes are in
     useEffect(() => {
-        if (gameState.status !== "VOTING" || showResults) return;
+        if (gameState.status !== "VOTING" || showResults || isRevealing) return;
 
         const currentMatch = matches[gameState.currentMatchIndex];
-        if (!currentMatch) {
-            console.log("📺 TV: No current match found for index", gameState.currentMatchIndex);
-            return;
-        }
+        if (!currentMatch) return;
 
         const playerList = Object.values(players);
         // Players who can vote (not the ones who wrote the responses)
         const eligibleVoters = playerList.filter(
-            p => p.id !== currentMatch.playerA && p.id !== currentMatch.playerB
+            p => p.id !== currentMatch.playerA && p.id !== currentMatch.playerB && !p.isSpectator
         );
 
-        console.log("📺 TV: Vote check - Match", gameState.currentMatchIndex + 1, "of", matches.length);
-        console.log("📺 TV: playerA:", currentMatch.playerA, "playerB:", currentMatch.playerB);
-        console.log("📺 TV: Total players:", playerList.length, "Eligible voters:", eligibleVoters.length);
-        console.log("📺 TV: votesA:", currentMatch.votesA?.length || 0, "votesB:", currentMatch.votesB?.length || 0);
-
-        if (eligibleVoters.length === 0) {
-            console.log("📺 TV: No eligible voters, skipping auto-reveal");
-            return;
-        }
-
+        // Calculate votes...
+        // ... (existing logic) ...
         const totalVotes = (currentMatch.votesA?.length || 0) + (currentMatch.votesB?.length || 0);
-        const allVoted = totalVotes >= eligibleVoters.length;
 
-        console.log("📺 TV: Total votes:", totalVotes, "All voted?", allVoted);
-
-        if (allVoted) {
-            console.log("✅ TV: All votes are in! Revealing results in 500ms...");
-            // Small delay before revealing
-            const timeout = setTimeout(() => {
-                revealResults();
-            }, 500);
-            return () => clearTimeout(timeout);
-        } else {
-            console.log("⏳ TV: Waiting for more votes... (", totalVotes, "/", eligibleVoters.length, ")");
+        if (eligibleVoters.length > 0 && totalVotes >= eligibleVoters.length) {
+            console.log("✅ TV: All votes are in! Triggering reveal sequence...");
+            revealResults();
         }
-    }, [matches, gameState.status, gameState.currentMatchIndex, players, showResults]);
-
-    // Auto-advance 10 seconds after showing results (TV is non-interactive)
-    useEffect(() => {
-        if (!showResults || gameState.status !== "VOTING") return;
-
-        const autoAdvanceTimer = setTimeout(() => {
-            advanceToNextMatch();
-        }, 10000); // 10 seconds
-
-        return () => clearTimeout(autoAdvanceTimer);
-    }, [showResults, gameState.status, gameState.currentMatchIndex]);
-
-    // Heartbeat: Update lastActive every 2 minutes to prevent room recycling while active
-    useEffect(() => {
-        if (!roomId) return;
-
-        const updateHeartbeat = () => {
-            if (document.visibilityState === 'visible') {
-                update(dbRef(`rooms/${roomId}`), {
-                    lastActive: Date.now()
-                }).catch(e => console.error("Heartbeat error", e));
-            }
-        };
-
-        // Update on mount
-        updateHeartbeat();
-
-        const interval = setInterval(updateHeartbeat, 2 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, [roomId]);
-
-    // Avanzar al siguiente match
-    const advanceToNextMatch = async () => {
-        if (!roomId) return;
-
-        const nextIndex = gameState.currentMatchIndex + 1;
-
-        if (nextIndex >= matches.length) {
-            // Fin de la ronda
-            if (gameState.currentRound >= gameState.totalRounds) {
-                // Fin del juego
-                await update(dbRef(`rooms/${roomId}/gameState`), { status: "PODIUM" });
-            } else {
-                // Siguiente ronda
-                const prompts = getRandomPrompts(Object.keys(players).filter(id => !players[id]?.isSpectator).length);
-                const activePlayers = Object.keys(players).filter(id => !players[id]?.isSpectator);
-                const newMatches = distributePrompts(activePlayers, prompts);
-
-                // Reset all players' submission status for the new round
-                const playerUpdates: Record<string, unknown> = {};
-                activePlayers.forEach(id => {
-                    playerUpdates[`players/${id}/hasSubmitted`] = false;
-                    playerUpdates[`players/${id}/submittedRound`] = null;
-                    playerUpdates[`players/${id}/responses`] = {};
-                });
-
-                console.log("🔄 TV: Starting new round - resetting player submission states");
-
-                await update(dbRef(`rooms/${roomId}`), {
-                    matches: newMatches,
-                    gameState: {
-                        ...gameState,
-                        status: "INPUT",
-                        currentRound: gameState.currentRound + 1,
-                        currentMatchIndex: 0,
-                        phaseEndTime: Date.now() + 90000,
-                    },
-                    ...playerUpdates,
-                });
-            }
-        } else {
-            // Siguiente match
-            await update(dbRef(`rooms/${roomId}/gameState`), {
-                currentMatchIndex: nextIndex,
-                status: "VOTING",
-                phaseEndTime: Date.now() + 20000,
-            });
-        }
-        setShowResults(false);
-    };
+    }, [matches, gameState.status, gameState.currentMatchIndex, players, showResults, isRevealing]);
 
     // Revelar resultados del match actual
     const revealResults = async () => {
+        if (isRevealing || showResults) return; // Guard against multiple calls
+
         console.log("🎯 TV: revealResults() called for match", gameState.currentMatchIndex);
+        setIsRevealing(true);
 
         if (!roomId || !matches[gameState.currentMatchIndex]) {
             console.log("❌ TV: Cannot reveal results - missing roomId or match");
+            setIsRevealing(false);
             return;
         }
+
+        // 🥁 DRUMROLL - PLAY ONLY ONCE
+        playSound("drumroll");
+
+        // Wait 3 seconds for dramatic effect
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // ... rest of logic ...
 
         const match = matches[gameState.currentMatchIndex];
         const allVotesA = match.votesA || [];
@@ -597,7 +529,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
 
         if (isQuiplashA) {
             console.log("🔥 QUIPLASH! Player A swept the votes!");
-            playSound('winner'); // Maybe add a special sound later
+            // Quiplash celebration sound removed - 'winner' sound reserved for final podium
             setQuiplashEvent({
                 show: true,
                 playerName: players[match.playerA]?.name || 'Jugador'
@@ -606,7 +538,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
             setTimeout(() => setQuiplashEvent(prev => ({ ...prev, show: false })), 4000);
         } else if (isQuiplashB) {
             console.log("🔥 QUIPLASH! Player B swept the votes!");
-            playSound('winner');
+            // Quiplash celebration sound removed - 'winner' sound reserved for final podium
             setQuiplashEvent({
                 show: true,
                 playerName: players[match.playerB]?.name || 'Jugador'
@@ -627,10 +559,18 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
         if (currentPlayers[match.playerA]) {
             currentPlayers[match.playerA].score += scoreA.total;
             currentPlayers[match.playerA] = updatePlayerStreak(currentPlayers[match.playerA], playerAWon);
+            // 🔊 STREAK SOUND
+            if (playerAWon && currentPlayers[match.playerA].streak?.currentWins && currentPlayers[match.playerA].streak!.currentWins >= 3) {
+                setTimeout(() => playSound("streak"), 500); // Slight delay after reveal
+            }
         }
         if (currentPlayers[match.playerB]) {
             currentPlayers[match.playerB].score += scoreB.total;
             currentPlayers[match.playerB] = updatePlayerStreak(currentPlayers[match.playerB], playerBWon);
+            // 🔊 STREAK SOUND
+            if (playerBWon && currentPlayers[match.playerB].streak?.currentWins && currentPlayers[match.playerB].streak!.currentWins >= 3) {
+                setTimeout(() => playSound("streak"), 500);
+            }
         }
 
         await update(dbRef(`rooms/${roomId}/players`), currentPlayers);
@@ -673,7 +613,7 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                 {/* Game Info Bar (Match & Round & Room) - Centered in Header */}
                 <div className="flex-1 flex justify-center absolute left-0 right-0 top-4 pointer-events-none">
                     <AnimatePresence>
-                        {(gameState.status === "VOTING" || gameState.status === "RESULTS" || gameState.status === "INPUT") && (
+                        {(gameState.status === "VOTING" || gameState.status === "INPUT") && (
                             <motion.div
                                 initial={{ y: -20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -936,71 +876,60 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="w-full max-w-7xl flex flex-col"
+                            className="w-full h-screen max-w-full flex flex-col overflow-hidden px-4"
                         >
-                            {/* Status and Progress - Top Side */}
-                            <div className="mb-4 flex flex-col items-center">
-
-                                {/* Status / Winner */}
+                            {/* Top: Timer + Status - Compact */}
+                            <div className="flex justify-center items-center gap-4 pt-20 pb-2">
+                                {/* Large visible timer */}
+                                <div className="bg-black text-white px-6 py-3 rounded-xl font-black text-3xl border-4 border-white shadow-xl">
+                                    ⏱️ {timer}s
+                                </div>
                                 {!showResults ? (
-                                    <div className="text-center py-2 px-6 bg-white/50 rounded-full border-2 border-black/10">
-                                        <p className="text-xl text-black font-bold">
-                                            ⏳ Esperando votos...
+                                    <div className="text-center py-2 px-4 bg-white/60 rounded-full border-2 border-black/10">
+                                        <p className="text-lg text-black font-bold animate-pulse">
+                                            ⏳ Votando...
                                         </p>
                                     </div>
                                 ) : (
                                     <motion.div
-                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        initial={{ opacity: 0, scale: 0.8 }}
                                         animate={{ opacity: 1, scale: 1 }}
-                                        className="text-center"
+                                        className="text-center bg-white/95 px-6 py-2 rounded-xl border-3 border-black shadow-lg"
                                     >
-                                        <div className="text-3xl font-bold">
+                                        <div className="text-2xl font-black uppercase">
                                             {(() => {
                                                 const match = currentMatch;
-                                                const allVotesA = match?.votesA || [];
-                                                const allVotesB = match?.votesB || [];
-                                                const regA = allVotesA.filter(id => !players[id]?.isSpectator).length;
-                                                const regB = allVotesB.filter(id => !players[id]?.isSpectator).length;
-                                                const specA = allVotesA.filter(id => players[id]?.isSpectator).length;
-                                                const specB = allVotesB.filter(id => players[id]?.isSpectator).length;
-
-                                                if (regA > regB) {
-                                                    return <span className="text-blue-500">🏆 ¡{players[match.playerA]?.name} gana!</span>;
-                                                } else if (regB > regA) {
-                                                    return <span className="text-pink-500">🏆 ¡{players[match.playerB]?.name} gana!</span>;
-                                                } else {
-                                                    if (specA > specB) {
-                                                        return <span className="text-blue-500">⚖️ ¡{players[match.playerA]?.name} gana por el público!</span>;
-                                                    } else if (specB > specA) {
-                                                        return <span className="text-pink-500">⚖️ ¡{players[match.playerB]?.name} gana por el público!</span>;
-                                                    }
-                                                    return <span className="text-yellow-600">🤝 ¡Empate total!</span>;
-                                                }
+                                                const regA = (match.votesA?.filter(id => !players[id]?.isSpectator).length || 0);
+                                                const regB = (match.votesB?.filter(id => !players[id]?.isSpectator).length || 0);
+                                                const specA = (match.votesA?.filter(id => players[id]?.isSpectator).length || 0);
+                                                const specB = (match.votesB?.filter(id => players[id]?.isSpectator).length || 0);
+                                                if (regA > regB) return <span className="text-blue-600">🏆 {players[match.playerA]?.name}!</span>;
+                                                if (regB > regA) return <span className="text-pink-600">🏆 {players[match.playerB]?.name}!</span>;
+                                                if (specA > specB) return <span className="text-blue-600">⚖️ {players[match.playerA]?.name}!</span>;
+                                                if (specB > specA) return <span className="text-pink-600">⚖️ {players[match.playerB]?.name}!</span>;
+                                                return <span className="text-yellow-600">🤝 Empate!</span>;
                                             })()}
                                         </div>
-                                        <p className="text-black font-bold text-sm mt-1">
-                                            Siguiente en 10 segundos...
-                                        </p>
                                     </motion.div>
                                 )}
                             </div>
 
-                            {/* Main Content - Center */}
-                            <div className="flex-1 flex flex-col justify-center">
-                                {/* Prompt */}
-                                <div className="prompt-card text-center mb-4">
-                                    <p className="text-5xl md:text-6xl font-bold leading-tight">
+                            {/* Main Content - Compact, centered */}
+                            <div className="flex-1 flex flex-col justify-center max-h-[58vh] overflow-hidden">
+                                {/* Prompt - Smaller */}
+                                <div className="prompt-card text-center mb-2">
+                                    <p className="text-3xl font-bold leading-tight">
                                         {currentMatch.promptText}
                                     </p>
                                 </div>
 
-                                {/* Respuestas */}
-                                <div className="grid md:grid-cols-2 gap-6 mb-2">
+                                {/* Respuestas - Compact */}
+                                <div className="grid md:grid-cols-2 gap-3 mb-1">
                                     <motion.div
                                         initial={{ x: -100, opacity: 0 }}
                                         animate={{ x: 0, opacity: 1 }}
                                         transition={{ delay: 0.5 }}
-                                        className={`response-card relative pt-6 transition-all duration-500 ${showResults
+                                        className={`response-card relative pt-4 pb-2 transition-all duration-500 ${showResults
                                             ? (currentMatch.votesA?.filter(id => !players[id]?.isSpectator).length || 0) > (currentMatch.votesB?.filter(id => !players[id]?.isSpectator).length || 0)
                                                 ? "bg-yellow-50 border-8 border-yellow-500 shadow-[0_0_60px_rgba(234,179,8,0.8)] scale-105 z-20"
                                                 : "border-gray-400 opacity-50 scale-95 grayscale"
@@ -1088,8 +1017,49 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
                                 </div>
                             </div>
 
-                            {/* Fixed bottom padding to avoid overlap with ranking */}
-                            <div className="h-40"></div>
+                            {/* FIXED Bottom Ranking - ALWAYS VISIBLE */}
+                            <div className="w-full pb-4 pt-2">
+                                <div className="glass-card bg-white/95 backdrop-blur-xl rounded-xl border-3 border-black shadow-xl p-2">
+                                    <div className="flex justify-center items-center gap-2 flex-wrap">
+                                        {playerList
+                                            .filter(p => !p.isSpectator)
+                                            .sort((a, b) => b.score - a.score)
+                                            .map((player, idx) => (
+                                                <div
+                                                    key={player.id}
+                                                    className={`relative flex flex-col items-center p-1.5 rounded-lg ${idx === 0 ? 'bg-yellow-400/30 border-2 border-yellow-500' : ''}`}
+                                                >
+                                                    <AnimatePresence>
+                                                        {penalizedPlayers.includes(player.id) && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.5, y: 0 }}
+                                                                animate={{ opacity: 1, scale: 1.5, y: -40 }}
+                                                                exit={{ opacity: 0 }}
+                                                                className="absolute top-0 z-50 flex justify-center pointer-events-none"
+                                                            >
+                                                                <span className="text-3xl font-black text-red-600 drop-shadow-[2px_2px_0_white]">-20</span>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                    <span className="text-xs font-black">
+                                                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}º`}
+                                                    </span>
+                                                    <PlayerAvatar
+                                                        size={40}
+                                                        avatar={player.avatar}
+                                                        className="border-2 border-black"
+                                                    />
+                                                    <span className="text-[10px] font-bold mt-0.5 text-black truncate max-w-[50px]">
+                                                        {player.name}
+                                                    </span>
+                                                    <span className="text-sm font-black text-purple-600">
+                                                        {player.score}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            </div>
                         </motion.div>
                     )}
 
