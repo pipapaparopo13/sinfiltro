@@ -248,12 +248,30 @@ export default function TVPage({ params }: { params: { roomCode: string } }) {
     }, [showResults, playSound]);
 
     // ✨ Play sound when new chat message arrives
-    const prevChatCountRef = useRef(0);
+    const lastMessageIdRef = useRef<string | null>(null);
+    const isFirstChatLoad = useRef(true);
+
     useEffect(() => {
-        if (chatMessages.length > prevChatCountRef.current && prevChatCountRef.current > 0) {
-            playSound("message");
+        // If no messages, just ensure we mark first load as done so next message plays
+        if (chatMessages.length === 0) {
+            if (isFirstChatLoad.current) isFirstChatLoad.current = false;
+            return;
         }
-        prevChatCountRef.current = chatMessages.length;
+
+        const latestMsg = chatMessages[chatMessages.length - 1];
+
+        if (isFirstChatLoad.current) {
+            // First load with existing messages: don't play sound, just track ID
+            isFirstChatLoad.current = false;
+            lastMessageIdRef.current = latestMsg.id;
+            return;
+        }
+
+        // Subsequent updates: check if ID changed (new message arrived)
+        if (latestMsg.id !== lastMessageIdRef.current) {
+            playSound("message");
+            lastMessageIdRef.current = latestMsg.id;
+        }
     }, [chatMessages, playSound]);
 
     const [penalizedPlayers, setPenalizedPlayers] = useState<string[]>([]);
